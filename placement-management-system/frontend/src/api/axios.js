@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // Target backend
+  baseURL: import.meta.env.VITE_API_URL || 'https://placement-backend-das.onrender.com/api', // Target backend
   headers: {
     'Content-Type': 'application/json',
   },

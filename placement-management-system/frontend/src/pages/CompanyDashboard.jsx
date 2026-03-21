@@ -136,9 +136,9 @@ const CompanyDashboard = () => {
                 applicants.map(app => (
                   <div key={app._id} className="py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">{app.applicant.name}</h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-300">{app.applicant.email} • {app.applicant.major} ({app.applicant.graduationYear})</p>
-                      {app.applicant.skills?.length > 0 && (
+                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">{app.applicant?.name || 'Unknown User'}</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">{app.applicant?.email || 'N/A'} • {app.applicant?.major || 'N/A'} {app.applicant?.graduationYear ? `(${app.applicant.graduationYear})` : ''}</p>
+                      {app.applicant?.skills?.length > 0 && (
                         <p className="text-xs text-slate-500 mt-1">Skills: {app.applicant.skills.join(', ')}</p>
                       )}
                       <p className="text-xs font-semibold mt-2 capitalize">Status: 
