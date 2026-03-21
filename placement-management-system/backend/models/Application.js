@@ -1,0 +1,21 @@
+const mongoose = require('mongoose');
+
+const applicationSchema = mongoose.Schema(
+  {
+    job: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: true },
+    applicant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    status: {
+      type: String,
+      enum: ['pending', 'shortlisted', 'rejected', 'hired'],
+      default: 'pending',
+    },
+    coverLetter: { type: String },
+    updates: [{
+      message: { type: String, required: true },
+      date: { type: Date, default: Date.now }
+    }],
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model('Application', applicationSchema);
