@@ -134,4 +134,27 @@ const deleteJob = async (req, res) => {
   }
 };
 
-module.exports = { getJobs, getMyJobs, getJobById, createJob, updateJob, deleteJob };
+// @desc    Toggle job status (open/closed) to enable or disable applications
+// @route   PUT /api/jobs/:id/toggle-status
+// @access  Private (Company, Admin)
+const toggleJobStatus = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    if (job.company.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(401).json({ message: 'Not authorized to update this job' });
+    }
+
+    job.status = job.status === 'open' ? 'closed' : 'open';
+    const updatedJob = await job.save();
+    res.json(updatedJob);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { getJobs, getMyJobs, getJobById, createJob, updateJob, deleteJob, toggleJobStatus };

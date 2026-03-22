@@ -13,6 +13,11 @@ const submitApplication = async (req, res) => {
     const job = await Job.findById(jobId);
     if (!job) return res.status(404).json({ message: 'Job not found' });
 
+    // Check if job is closed (company has disabled applications)
+    if (job.status === 'closed') {
+      return res.status(400).json({ message: 'Applications for this job are currently closed.' });
+    }
+
     // Check if already applied
     const existing = await Application.findOne({ job: jobId, applicant: req.user._id });
     if (existing) return res.status(400).json({ message: 'Already applied for this job' });

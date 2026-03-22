@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const CompanyDashboard = () => {
   const [jobs, setJobs] = useState([]);
@@ -18,6 +18,9 @@ const CompanyDashboard = () => {
   const [applicants, setApplicants] = useState([]);
   const [messageText, setMessageText] = useState('');
   const [individualMessage, setIndividualMessage] = useState({ appId: null, text: '' });
+
+  // Confirm delete state
+  const [confirmDeleteJobId, setConfirmDeleteJobId] = useState(null);
 
   useEffect(() => {
     fetchMyJobs();
@@ -53,6 +56,28 @@ const CompanyDashboard = () => {
       fetchMyJobs();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create job');
+    }
+  };
+
+  const handleDeleteJob = async (jobId) => {
+    try {
+      await api.delete(`/jobs/${jobId}`);
+      toast.success('Job post deleted successfully.');
+      setJobs(jobs.filter(j => j._id !== jobId));
+      setConfirmDeleteJobId(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete job');
+    }
+  };
+
+  const handleToggleStatus = async (job) => {
+    const action = job.status === 'open' ? 'close' : 'reopen';
+    try {
+      const { data } = await api.put(`/jobs/${job._id}/toggle-status`);
+      toast.success(`Applications ${data.status === 'open' ? 'reopened' : 'closed'} for "${job.title}".`);
+      setJobs(jobs.map(j => j._id === job._id ? { ...j, status: data.status } : j));
+    } catch (err) {
+      toast.error(err.response?.data?.message || `Failed to ${action} applications`);
     }
   };
 
@@ -111,6 +136,7 @@ const CompanyDashboard = () => {
         </button>
       </div>
       
+      {/* Create Job Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -180,6 +206,7 @@ const CompanyDashboard = () => {
         </div>
       )}
 
+      {/* Applicants Modal */}
       {showApplicantsModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col">
@@ -253,7 +280,7 @@ const CompanyDashboard = () => {
               )}
             </div>
             
-            {/* New section for messaging shortlisted students */}
+            {/* Message shortlisted students */}
             <div className="mt-8 pt-6 border-t border-slate-200 shrink-0">
               <h3 className="font-bold text-lg text-slate-800 dark:text-white mb-2">Message Shortlisted Students</h3>
               <p className="text-sm text-slate-500 mb-4">Send an update, interview link, or announcement directly to everyone you have shortlisted for this role.</p>
@@ -271,24 +298,75 @@ const CompanyDashboard = () => {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-[0_2px_15px_rgb(0,0,0,0.03)] border border-slate-100 dark:border-slate-700 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50/50">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Your Active Postings</h2>
+      {/* Delete Confirmation Dialog */}
+      {confirmDeleteJobId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Delete Job Post?</h2>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300 mb-6">
+              This will <strong>permanently delete</strong> the job posting and all associated applications. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setConfirmDeleteJobId(null)} className="px-5 py-2.5 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => handleDeleteJob(confirmDeleteJobId)} className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors">
+                Yes, Delete
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="divide-y divide-slate-100">
+      )}
+
+      {/* Job list */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-[0_2px_15px_rgb(0,0,0,0.03)] border border-slate-100 dark:border-slate-700 overflow-hidden">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Your Job Postings</h2>
+        </div>
+        <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {jobs.map(job => (
-            <div key={job._id} className="p-6 hover:bg-slate-50 dark:bg-slate-800/50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h3 className="font-bold text-lg text-slate-900">{job.title}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-slate-500 font-medium">{job.location}</span>
-                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                  <span className="text-sm text-slate-500 capitalize">{job.type}</span>
+            <div key={job._id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">{job.title}</h3>
+                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${job.status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                      {job.status === 'open' ? 'Open' : 'Closed'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm text-slate-500 font-medium">{job.location}</span>
+                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                    <span className="text-sm text-slate-500 capitalize">{job.type}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button onClick={() => openApplicantsModal(job)} className="text-primary-600 font-semibold text-sm bg-primary-50 hover:bg-primary-100 py-2 px-4 rounded-lg transition-colors">
+                    Manage Applicants
+                  </button>
+                  <button
+                    onClick={() => handleToggleStatus(job)}
+                    title={job.status === 'open' ? 'Close Applications' : 'Reopen Applications'}
+                    className={`flex items-center gap-1.5 font-semibold text-sm py-2 px-4 rounded-lg transition-colors ${job.status === 'open' ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                  >
+                    {job.status === 'open' ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                    {job.status === 'open' ? 'Close Applications' : 'Reopen Applications'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteJobId(job._id)}
+                    title="Delete job post"
+                    className="flex items-center gap-1.5 font-semibold text-sm py-2 px-4 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
                 </div>
               </div>
-              <button onClick={() => openApplicantsModal(job)} className="text-primary-600 font-semibold text-sm bg-primary-50 hover:bg-primary-100 py-2 px-4 rounded-lg transition-colors">
-                Manage Applicants
-              </button>
             </div>
           ))}
           {jobs.length === 0 && <div className="p-10 text-center text-slate-500">You haven't posted any jobs yet.</div>}
