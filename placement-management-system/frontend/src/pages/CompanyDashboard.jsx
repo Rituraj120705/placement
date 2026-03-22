@@ -6,13 +6,18 @@ import { PlusCircle } from 'lucide-react';
 const CompanyDashboard = () => {
   const [jobs, setJobs] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', location: '', salary: '', type: 'full-time' });
+  const [formData, setFormData] = useState({ 
+    title: '', description: '', location: '', salary: '', 
+    type: 'full-time', deadline: '', cgpa: '', skills: '', 
+    compensationDetails: '', material: null 
+  });
 
   // Applicant management state
   const [showApplicantsModal, setShowApplicantsModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [applicants, setApplicants] = useState([]);
   const [messageText, setMessageText] = useState('');
+  const [individualMessage, setIndividualMessage] = useState({ appId: null, text: '' });
 
   useEffect(() => {
     fetchMyJobs();
@@ -20,7 +25,7 @@ const CompanyDashboard = () => {
 
   const fetchMyJobs = async () => {
     try {
-      const { data } = await api.get('/jobs');
+      const { data } = await api.get('/jobs/company/me');
       setJobs(data);
     } catch (err) { }
   };
@@ -28,10 +33,23 @@ const CompanyDashboard = () => {
   const handleCreateJob = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/jobs', formData);
+      const submitData = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (formData[key] !== null && formData[key] !== '') {
+          submitData.append(key, formData[key]);
+        }
+      });
+
+      await api.post('/jobs', submitData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       toast.success('Job Created Successfully!');
       setShowModal(false);
-      setFormData({ title: '', description: '', location: '', salary: '', type: 'full-time' });
+      setFormData({ 
+        title: '', description: '', location: '', salary: '', 
+        type: 'full-time', deadline: '', cgpa: '', skills: '', 
+        compensationDetails: '', material: null 
+      });
       fetchMyJobs();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create job');
@@ -70,6 +88,17 @@ const CompanyDashboard = () => {
     }
   };
 
+  const handleSendIndividualMessage = async (appId) => {
+    if (!individualMessage.text.trim()) return toast.error('Message cannot be empty');
+    try {
+      const { data } = await api.post(`/applications/${appId}/message`, { message: individualMessage.text });
+      toast.success(data.message);
+      setIndividualMessage({ appId: null, text: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send message');
+    }
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto p-4 md:p-8 flex-grow">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
@@ -84,7 +113,7 @@ const CompanyDashboard = () => {
       
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 w-full max-w-xl shadow-2xl">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Create Job Posting</h2>
             <form onSubmit={handleCreateJob} className="space-y-5">
               <div>
@@ -105,13 +134,42 @@ const CompanyDashboard = () => {
                   <input type="text" className="input-field px-4 py-2 border rounded-lg w-full focus:ring-2 focus:ring-primary-500 outline-none" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} placeholder="e.g. $80k - $100k" />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Employment Type</label>
-                <select className="input-field px-4 py-2 border rounded-lg w-full focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-slate-800" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                  <option value="full-time">Full-time</option>
-                  <option value="part-time">Part-time</option>
-                  <option value="internship">Internship</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Employment Type</label>
+                  <select className="input-field px-4 py-2 border rounded-lg w-full focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-slate-800" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                    <option value="full-time">Full-time</option>
+                    <option value="part-time">Part-time</option>
+                    <option value="internship">Internship</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Last Date to Apply</label>
+                  <input type="date" required className="input-field px-4 py-2 border rounded-lg w-full focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-slate-800" value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Min CGPA Criteria</label>
+                  <input type="number" step="0.1" min="0" max="10" className="input-field px-4 py-2 border rounded-lg w-full focus:ring-2 focus:ring-primary-500 outline-none" value={formData.cgpa} onChange={e => setFormData({...formData, cgpa: e.target.value})} placeholder="e.g. 7.5" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Required Skills (comma separated)</label>
+                  <input type="text" className="input-field px-4 py-2 border rounded-lg w-full focus:ring-2 focus:ring-primary-500 outline-none" value={formData.skills} onChange={e => setFormData({...formData, skills: e.target.value})} placeholder="React, Node.js, Python" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Detailed Compensation Info</label>
+                  <textarea className="input-field px-4 py-2 border rounded-lg w-full h-20 resize-none focus:ring-2 focus:ring-primary-500 outline-none text-sm" value={formData.compensationDetails} onChange={e => setFormData({...formData, compensationDetails: e.target.value})} placeholder="e.g. ₹40k Stipend, 12 LPA post-internship" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Supporting Material (PDF/Word)</label>
+                  <input type="file" accept=".pdf,.doc,.docx" className="input-field px-4 py-2 border rounded-lg w-full focus:ring-2 focus:ring-primary-500 outline-none text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" onChange={e => setFormData({...formData, material: e.target.files[0]})} />
+                  <p className="text-[10px] text-slate-500 mt-1">Provide a brochure or detailed JD document (Max 10MB).</p>
+                </div>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
                 <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
@@ -134,23 +192,51 @@ const CompanyDashboard = () => {
                 <p className="text-slate-500 text-center py-10">No applicants yet.</p>
               ) : (
                 applicants.map(app => (
-                  <div key={app._id} className="py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">{app.applicant?.name || 'Unknown User'}</h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-300">{app.applicant?.email || 'N/A'} • {app.applicant?.major || 'N/A'} {app.applicant?.graduationYear ? `(${app.applicant.graduationYear})` : ''}</p>
-                      {app.applicant?.skills?.length > 0 && (
-                        <p className="text-xs text-slate-500 mt-1">Skills: {app.applicant.skills.join(', ')}</p>
-                      )}
-                      <p className="text-xs font-semibold mt-2 capitalize">Status: 
-                        <span className={`ml-1 ${app.status === 'pending' ? 'text-amber-500' : app.status === 'rejected' ? 'text-red-500' : 'text-emerald-500'}`}>
-                          {app.status}
-                        </span>
-                      </p>
+                  <div key={app._id} className="py-4 flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-white">{app.applicant?.name || 'Unknown User'}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">{app.applicant?.email || 'N/A'} • {app.applicant?.major || 'N/A'} {app.applicant?.graduationYear ? `(${app.applicant.graduationYear})` : ''}</p>
+                        {app.applicant?.skills?.length > 0 && (
+                          <p className="text-xs text-slate-500 mt-1">Skills: {app.applicant.skills.join(', ')}</p>
+                        )}
+                        <p className="text-xs font-semibold mt-2 capitalize">Status: 
+                          <span className={`ml-1 ${app.status === 'pending' ? 'text-amber-500' : app.status === 'rejected' ? 'text-red-500' : 'text-emerald-500'}`}>
+                            {app.status}
+                          </span>
+                        </p>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2 items-end">
+                        {app.status === 'pending' && (
+                          <div className="flex gap-2 items-center">
+                            {new Date(selectedJob?.deadline) > new Date() ? (
+                              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">Wait until deadline passes to shortlist</span>
+                            ) : (
+                              <button onClick={() => updateStatus(app._id, 'shortlisted')} className="px-3 py-1.5 bg-emerald-50 text-emerald-600 text-sm font-semibold rounded-lg hover:bg-emerald-100 transition-colors">Shortlist</button>
+                            )}
+                            <button onClick={() => updateStatus(app._id, 'rejected')} className="px-3 py-1.5 bg-red-50 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors">Reject</button>
+                          </div>
+                        )}
+                        <button onClick={() => setIndividualMessage({ appId: individualMessage.appId === app._id ? null : app._id, text: '' })} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-sm font-semibold rounded-lg hover:bg-indigo-100 transition-colors">
+                          {individualMessage.appId === app._id ? 'Cancel Message' : 'Message Student'}
+                        </button>
+                      </div>
                     </div>
-                    {app.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <button onClick={() => updateStatus(app._id, 'shortlisted')} className="px-3 py-1.5 bg-emerald-50 text-emerald-600 text-sm font-semibold rounded-lg hover:bg-emerald-100 transition-colors">Shortlist</button>
-                        <button onClick={() => updateStatus(app._id, 'rejected')} className="px-3 py-1.5 bg-red-50 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors">Reject</button>
+                    {/* Individual Message Wrapper */}
+                    {individualMessage.appId === app._id && (
+                      <div className="w-full p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl mt-2 animate-fade-in-up">
+                        <textarea 
+                          className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none resize-none h-20 mb-3 text-sm flex-grow bg-white dark:bg-slate-800 dark:text-white"
+                          placeholder={`Type individual message to ${app.applicant?.name || 'student'}...`}
+                          value={individualMessage.text}
+                          onChange={e => setIndividualMessage({...individualMessage, text: e.target.value})}
+                        />
+                        <div className="flex justify-end relative">
+                          <button onClick={() => handleSendIndividualMessage(app._id)} className="btn-primary py-1.5 px-5 text-sm font-semibold">
+                            Send
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

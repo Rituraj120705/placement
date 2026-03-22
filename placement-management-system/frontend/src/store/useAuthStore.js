@@ -33,6 +33,12 @@ export const useAuthStore = create((set, get) => ({
       const response = await api.post('/auth/register', userData);
       const { token, ...newUserData } = response.data;
       
+      // If it's a company, they need admin approval. Do not log them in immediately.
+      if (newUserData.role === 'company') {
+        set({ isLoading: false });
+        return true;
+      }
+
       localStorage.setItem('token', token);
       set({ user: newUserData, token, isAuthenticated: true, isLoading: false });
       return true;

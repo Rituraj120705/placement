@@ -26,9 +26,13 @@ const Register = () => {
     e.preventDefault();
     const success = await register(formData);
     if (success) {
-      toast.success('Registration successful!');
-      if (formData.role === 'company') navigate('/company/dashboard');
-      else navigate('/student/dashboard');
+      if (formData.role === 'company') {
+        toast.success('Registration successful! Your account is pending Admin approval. You may login once approved.', { autoClose: 5000 });
+        navigate('/login');
+      } else {
+        toast.success('Registration successful!');
+        navigate('/student/dashboard');
+      }
     } else {
       toast.error(error || 'Registration failed');
     }

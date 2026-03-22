@@ -19,7 +19,10 @@ const userSchema = mongoose.Schema(
     // Company specific fields
     companyName: { type: String },
     companyDescription: { type: String },
-    website: { type: String }
+    website: { type: String },
+    
+    // Approval
+    isApproved: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

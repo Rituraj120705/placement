@@ -31,6 +31,7 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       role: role || 'student',
+      isApproved: role === 'company' ? false : true,
     };
 
     if (role === 'student') {
@@ -68,6 +69,11 @@ const login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await bcrypt.compare(password, user.password))) {
+      // Check for company approval
+      if (user.role === 'company' && !user.isApproved) {
+        return res.status(403).json({ message: 'Your company account is pending approval by an admin.' });
+      }
+
       res.json({
         _id: user._id,
         name: user.name,
@@ -125,4 +131,54 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getProfile, getAllUsers, deleteUser };
+// @desc    Get pending companies (Admin only)
+// @route   GET /api/auth/pending-companies
+// @access  Private (Admin)
+const getPendingCompanies = async (req, res) => {
+  try {
+    const companies = await User.find({ role: 'company', isApproved: false }).select('-password');
+    res.json(companies);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Approve a company (Admin only)
+// @route   PUT /api/auth/approve-company/:id
+// @access  Private (Admin)
+const approveCompany = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user || user.role !== 'company') {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+    
+    user.isApproved = true;
+    await user.save();
+    
+    res.json({ message: 'Company approved successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Revoke/Block a company (Admin only)
+// @route   PUT /api/auth/revoke-company/:id
+// @access  Private (Admin)
+const revokeCompany = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user || user.role !== 'company') {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+    
+    user.isApproved = false;
+    await user.save();
+    
+    res.json({ message: 'Company access revoked' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { register, login, getProfile, getAllUsers, deleteUser, getPendingCompanies, approveCompany, revokeCompany };

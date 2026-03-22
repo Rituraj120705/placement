@@ -77,6 +77,10 @@ const updateApplicationStatus = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized' });
     }
 
+    if (status === 'shortlisted' && new Date(application.job.deadline) >= new Date()) {
+      return res.status(400).json({ message: 'Cannot shortlist students before the job deadline.' });
+    }
+
     application.status = status;
     const updatedApplication = await application.save();
 
@@ -92,7 +96,14 @@ const updateApplicationStatus = async (req, res) => {
 const getAllApplications = async (req, res) => {
   try {
     const applications = await Application.find({})
-      .populate('job', 'title company')
+      .populate({
+        path: 'job',
+        select: 'title company',
+        populate: {
+          path: 'company',
+          select: 'companyName name'
+        }
+      })
       .populate('applicant', 'name email');
     res.json(applications);
   } catch (error) {
@@ -132,4 +143,28 @@ const messageShortlistedStudents = async (req, res) => {
   }
 };
 
-module.exports = { submitApplication, getMyApplications, getJobApplications, updateApplicationStatus, getAllApplications, messageShortlistedStudents };
+// @desc    Message a specific student
+// @route   POST /api/applications/:id/message
+// @access  Private (Company)
+const messageStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+
+    const application = await Application.findById(id).populate('job');
+    if (!application) return res.status(404).json({ message: 'Application not found' });
+
+    if (application.job.company.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    application.updates.push({ message });
+    await application.save();
+
+    res.json({ message: 'Message sent successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { submitApplication, getMyApplications, getJobApplications, updateApplicationStatus, getAllApplications, messageShortlistedStudents, messageStudent };

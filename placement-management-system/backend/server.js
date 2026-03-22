@@ -15,10 +15,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const path = require('path');
+
 // Base Route
 app.get('/', (req, res) => {
   res.send('Placement Management System API is running...');
 });
+
+// Serve static uploads folder
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
