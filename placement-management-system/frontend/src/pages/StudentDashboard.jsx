@@ -10,6 +10,10 @@ const StudentDashboard = () => {
   const [myApplications, setMyApplications] = useState([]);
   const [fullApplications, setFullApplications] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [showApplyForm, setShowApplyForm] = useState(false);
+  const [applyData, setApplyData] = useState({
+    coverLetter: '', tenthMarksheet: null, twelfthMarksheet: null, collegeMarksheet: null, certificates: null
+  });
 
   useEffect(() => {
     fetchJobs();
@@ -41,11 +45,24 @@ const StudentDashboard = () => {
     }
   };
 
-  const applyForJob = async (jobId) => {
+  const applyForJob = async (e) => {
+    e.preventDefault();
     try {
-      await api.post(`/applications/${jobId}`, { coverLetter: 'Interested in this role.' });
+      const formData = new FormData();
+      formData.append('coverLetter', applyData.coverLetter);
+      if (applyData.tenthMarksheet) formData.append('tenthMarksheet', applyData.tenthMarksheet);
+      if (applyData.twelfthMarksheet) formData.append('twelfthMarksheet', applyData.twelfthMarksheet);
+      if (applyData.collegeMarksheet) formData.append('collegeMarksheet', applyData.collegeMarksheet);
+      if (applyData.certificates) formData.append('certificates', applyData.certificates);
+
+      await api.post(`/applications/${selectedJob._id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       toast.success('Successfully applied!');
       fetchMyApplications();
+      setShowApplyForm(false);
+      setSelectedJob(null);
+      setApplyData({ coverLetter: '', tenthMarksheet: null, twelfthMarksheet: null, collegeMarksheet: null, certificates: null });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to apply');
     }
@@ -65,9 +82,14 @@ const StudentDashboard = () => {
               <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
                 <Briefcase className="w-6 h-6" />
               </div>
-              <span className="px-3 py-1 bg-slate-50 text-slate-600 dark:text-slate-300 border border-slate-200 text-xs font-semibold rounded-full capitalize">
-                {job.type}
-              </span>
+              <div className="flex gap-2">
+                <span className={`px-3 py-1 border border-transparent text-xs font-semibold rounded-full ${myApplications.includes(job._id) ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>
+                  {myApplications.includes(job._id) ? 'Applied' : 'Not Applied'}
+                </span>
+                <span className="px-3 py-1 bg-slate-50 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 text-xs font-semibold rounded-full capitalize">
+                  {job.type}
+                </span>
+              </div>
             </div>
             <h3 className="text-xl font-bold text-slate-800 dark:text-white line-clamp-1">{job.title}</h3>
             <div className="flex items-center text-slate-500 mt-2 gap-2 text-sm font-medium">
@@ -91,7 +113,7 @@ const StudentDashboard = () => {
             
             <button
               onClick={() => setSelectedJob(job)}
-              className="w-full mt-6 py-3 rounded-xl font-medium transition-all bg-primary-50 text-primary-600 hover:bg-primary-600 hover:text-white hover:shadow-lg hover:shadow-primary-500/30"
+              className={`w-full mt-6 py-3 rounded-xl font-medium transition-all ${myApplications.includes(job._id) ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' : 'bg-primary-50 text-primary-600 hover:bg-primary-600 hover:text-white hover:shadow-lg hover:shadow-primary-500/30'}`}
             >
               View Details
             </button>
@@ -152,10 +174,12 @@ const StudentDashboard = () => {
       {selectedJob && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar relative animate-fade-in-up">
-            <button onClick={() => setSelectedJob(null)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+            <button onClick={() => { setSelectedJob(null); setShowApplyForm(false); }} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
             
+            {!showApplyForm ? (
+              <>
             <div className="mb-6 pr-8">
               <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-2">{selectedJob.title}</h2>
               <p className="text-xl text-primary-600 font-medium">{selectedJob.company?.companyName || 'Unknown Company'}</p>
@@ -215,23 +239,60 @@ const StudentDashboard = () => {
               )}
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row gap-4">
-              <button onClick={() => setSelectedJob(null)} className="px-6 py-3 text-slate-600 dark:text-slate-300 font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">Close</button>
-              <button
-                onClick={() => {
-                  applyForJob(selectedJob._id);
-                  setSelectedJob(null);
-                }}
-                disabled={myApplications.includes(selectedJob._id)}
-                className={`flex-grow py-3 rounded-xl font-bold transition-all ${
-                  myApplications.includes(selectedJob._id)
-                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-not-allowed flex justify-center items-center gap-2'
-                    : 'bg-primary-600 text-white hover:bg-primary-700 hover:shadow-lg hover:shadow-primary-500/30'
-                }`}
-              >
-                {myApplications.includes(selectedJob._id) ? <><CheckCircle className="w-5 h-5"/> Applied</> : 'Apply for this Job'}
-              </button>
+            {myApplications.includes(selectedJob._id) && (
+              <div className="mt-8 pt-4 pb-2 border-t border-slate-100 dark:border-slate-700">
+                <div className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 p-4 rounded-xl flex items-start gap-3">
+                  <CheckCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold sm:text-lg">You have already applied for this role!</h4>
+                    <p className="text-sm mt-1 opacity-90">You cannot apply for the same role a second time. You only have to fill the application form out once.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className={`${myApplications.includes(selectedJob._id) ? 'mt-4' : 'mt-8 pt-6 border-t border-slate-100 dark:border-slate-700'} flex flex-col sm:flex-row gap-4`}>
+              <button onClick={() => { setSelectedJob(null); setShowApplyForm(false); }} className="px-6 py-3 text-slate-600 dark:text-slate-300 font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">Close</button>
+              {!myApplications.includes(selectedJob._id) && (
+                <button
+                  onClick={() => setShowApplyForm(true)}
+                  className="flex-grow py-3 rounded-xl font-bold transition-all bg-primary-600 text-white hover:bg-primary-700 hover:shadow-lg hover:shadow-primary-500/30"
+                >
+                  Apply for this Job
+                </button>
+              )}
             </div>
+              </>
+            ) : (
+              <form onSubmit={applyForJob} className="space-y-5">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Apply to {selectedJob.title}</h2>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Cover Letter (Optional)</label>
+                  <textarea className="input-field px-4 py-2 border rounded-lg w-full h-24 resize-none transition-all outline-none bg-white dark:bg-slate-800" value={applyData.coverLetter} onChange={e => setApplyData({...applyData, coverLetter: e.target.value})} placeholder="Why are you a great fit for this role?" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">10th Marksheet <span className="text-red-500">*</span></label>
+                    <input type="file" required accept=".pdf,.png,.jpg,.jpeg" onChange={e => setApplyData({...applyData, tenthMarksheet: e.target.files[0]})} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-slate-700 dark:file:text-slate-200" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">12th Marksheet <span className="text-red-500">*</span></label>
+                    <input type="file" required accept=".pdf,.png,.jpg,.jpeg" onChange={e => setApplyData({...applyData, twelfthMarksheet: e.target.files[0]})} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-slate-700 dark:file:text-slate-200" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">College Marksheet <span className="text-red-500">*</span></label>
+                    <input type="file" required accept=".pdf,.png,.jpg,.jpeg" onChange={e => setApplyData({...applyData, collegeMarksheet: e.target.files[0]})} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-slate-700 dark:file:text-slate-200" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Certificates</label>
+                    <input type="file" accept=".pdf,.zip,.rar" onChange={e => setApplyData({...applyData, certificates: e.target.files[0]})} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-slate-700 dark:file:text-slate-200" />
+                  </div>
+                </div>
+                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row gap-4">
+                  <button type="button" onClick={() => setShowApplyForm(false)} className="px-6 py-3 text-slate-600 dark:text-slate-300 font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">Back</button>
+                  <button type="submit" className="flex-grow py-3 rounded-xl font-bold bg-primary-600 text-white hover:bg-primary-700 hover:shadow-lg transition-all flex justify-center items-center gap-2">Submit Application</button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

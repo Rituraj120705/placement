@@ -17,10 +17,20 @@ const submitApplication = async (req, res) => {
     const existing = await Application.findOne({ job: jobId, applicant: req.user._id });
     if (existing) return res.status(400).json({ message: 'Already applied for this job' });
 
+    // Handle file uploads
+    const tenthMarksheet = req.files && req.files['tenthMarksheet'] ? `/uploads/${req.files['tenthMarksheet'][0].filename}` : '';
+    const twelfthMarksheet = req.files && req.files['twelfthMarksheet'] ? `/uploads/${req.files['twelfthMarksheet'][0].filename}` : '';
+    const collegeMarksheet = req.files && req.files['collegeMarksheet'] ? `/uploads/${req.files['collegeMarksheet'][0].filename}` : '';
+    const certificates = req.files && req.files['certificates'] ? `/uploads/${req.files['certificates'][0].filename}` : '';
+
     const application = await Application.create({
       job: jobId,
       applicant: req.user._id,
       coverLetter,
+      tenthMarksheet,
+      twelfthMarksheet,
+      collegeMarksheet,
+      certificates
     });
 
     res.status(201).json(application);

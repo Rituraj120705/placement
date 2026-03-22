@@ -10,6 +10,10 @@ const applicationSchema = mongoose.Schema(
       default: 'pending',
     },
     coverLetter: { type: String },
+    tenthMarksheet: { type: String },
+    twelfthMarksheet: { type: String },
+    collegeMarksheet: { type: String },
+    certificates: { type: String },
     updates: [{
       message: { type: String, required: true },
       date: { type: Date, default: Date.now }

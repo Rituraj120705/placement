@@ -205,6 +205,15 @@ const CompanyDashboard = () => {
                             {app.status}
                           </span>
                         </p>
+                        {app.coverLetter && (
+                          <p className="text-sm text-slate-700 dark:text-slate-300 mt-2 italic bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">"{app.coverLetter}"</p>
+                        )}
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {app.tenthMarksheet && <a href={`http://localhost:5000${app.tenthMarksheet}`} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold transition-colors">10th Marksheet</a>}
+                          {app.twelfthMarksheet && <a href={`http://localhost:5000${app.twelfthMarksheet}`} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold transition-colors">12th Marksheet</a>}
+                          {app.collegeMarksheet && <a href={`http://localhost:5000${app.collegeMarksheet}`} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold transition-colors">College Marksheet</a>}
+                          {app.certificates && <a href={`http://localhost:5000${app.certificates}`} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold transition-colors">Certificates</a>}
+                        </div>
                       </div>
                       
                       <div className="flex flex-col gap-2 items-end">

@@ -92,9 +92,8 @@ const AdminDashboard = () => {
     }
   };
 
-  // Group shortlisted applications by company
-  const shortlistedByCompany = applications
-    .filter(app => app.status === 'shortlisted')
+  // Group all applications by company
+  const applicationsByCompany = applications
     .reduce((acc, app) => {
       const companyId = app.job?.company?._id || 'unknown';
       const companyName = app.job?.company?.companyName || 'Unknown Company';
@@ -110,12 +109,18 @@ const AdminDashboard = () => {
         applicantName: app.applicant?.name || 'Unknown',
         applicantEmail: app.applicant?.email || 'N/A',
         jobTitle: app.job?.title || 'Unknown Job',
-        updates: app.updates || []
+        status: app.status,
+        updates: app.updates || [],
+        coverLetter: app.coverLetter,
+        tenthMarksheet: app.tenthMarksheet,
+        twelfthMarksheet: app.twelfthMarksheet,
+        collegeMarksheet: app.collegeMarksheet,
+        certificates: app.certificates
       });
       return acc;
     }, {});
 
-  const shortlistedCompaniesList = Object.values(shortlistedByCompany);
+  const applicationsList = Object.values(applicationsByCompany);
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 md:p-8 flex-grow">
@@ -282,32 +287,32 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Shortlisted Students by Company Section */}
+      {/* Applications by Company Section */}
       <div className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-[0_2px_15px_rgb(0,0,0,0.03)] border border-slate-100 dark:border-slate-700 overflow-hidden">
         <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shortlisted Students by Company</h2>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Student Applications by Company</h2>
         </div>
         <div className="p-0">
-          {shortlistedCompaniesList.length === 0 ? (
-            <div className="p-8 text-center text-slate-500">No students have been shortlisted yet.</div>
+          {applicationsList.length === 0 ? (
+            <div className="p-8 text-center text-slate-500">No applications have been made yet.</div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-700">
-              {shortlistedCompaniesList.map((company) => (
+              {applicationsList.map((company) => (
                 <div key={company.companyId} className="flex flex-col">
                   {/* Company Row */}
                   <div className="flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <div>
                       <h3 className="text-lg font-semibold text-slate-800 dark:text-white">{company.companyName}</h3>
-                      <p className="text-sm text-slate-500">{company.students.length} Student(s) Shortlisted</p>
+                      <p className="text-sm text-slate-500">{company.students.length} Total Application(s)</p>
                     </div>
                     <button
                       onClick={() => setExpandedCompany(expandedCompany === company.companyId ? null : company.companyId)}
                       className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700 transition-colors"
                     >
                       {expandedCompany === company.companyId ? (
-                        <>Hide Students <ChevronUp className="w-4 h-4" /></>
+                        <>Hide Applications <ChevronUp className="w-4 h-4" /></>
                       ) : (
-                        <>View Students <ChevronDown className="w-4 h-4" /></>
+                        <>View Applications <ChevronDown className="w-4 h-4" /></>
                       )}
                     </button>
                   </div>
@@ -323,11 +328,32 @@ const AdminDashboard = () => {
                                 <span className="font-semibold text-slate-800 dark:text-white block">{student.applicantName}</span>
                                 <span className="text-xs text-slate-500">{student.applicantEmail}</span>
                               </div>
-                              <div className="text-xs px-2 py-1 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 rounded-md inline-block whitespace-nowrap ml-2">
-                                {student.jobTitle}
+                              <div className="flex flex-col items-end gap-1">
+                                <div className="text-[10px] px-2 py-1 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 rounded-md whitespace-nowrap">
+                                  {student.jobTitle}
+                                </div>
+                                <div className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${student.status === 'pending' ? 'bg-amber-50 text-amber-600' : student.status === 'rejected' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                  {student.status}
+                                </div>
                               </div>
                             </div>
                             
+                            {student.coverLetter && (
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 italic bg-slate-50 dark:bg-slate-900/50 p-2 rounded border border-slate-100 dark:border-slate-700">"{student.coverLetter}"</p>
+                            )}
+
+                            {(student.tenthMarksheet || student.twelfthMarksheet || student.collegeMarksheet || student.certificates) && (
+                              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+                                <span className="text-xs font-semibold text-slate-500 block mb-2">Attached Documents:</span>
+                                <div className="flex flex-wrap gap-2">
+                                  {student.tenthMarksheet && <a href={`http://localhost:5000${student.tenthMarksheet}`} target="_blank" rel="noopener noreferrer" className="text-[10px] px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded font-semibold transition-colors">10th Marksheet</a>}
+                                  {student.twelfthMarksheet && <a href={`http://localhost:5000${student.twelfthMarksheet}`} target="_blank" rel="noopener noreferrer" className="text-[10px] px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded font-semibold transition-colors">12th Marksheet</a>}
+                                  {student.collegeMarksheet && <a href={`http://localhost:5000${student.collegeMarksheet}`} target="_blank" rel="noopener noreferrer" className="text-[10px] px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded font-semibold transition-colors">College</a>}
+                                  {student.certificates && <a href={`http://localhost:5000${student.certificates}`} target="_blank" rel="noopener noreferrer" className="text-[10px] px-2 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded font-semibold transition-colors">Certificate</a>}
+                                </div>
+                              </div>
+                            )}
+
                             {/* Messages sent to this student */}
                             {student.updates && student.updates.length > 0 && (
                               <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
