@@ -14,6 +14,7 @@ import { useThemeStore } from './store/useThemeStore';
 import StudentDashboard from './pages/StudentDashboard';
 import CompanyDashboard from './pages/CompanyDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import TakeTest from './pages/TakeTest';
 
 function App() {
   const loadUser = useAuthStore(state => state.loadUser);
@@ -26,28 +27,38 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
-        <Header />
-        <main className="flex-grow flex flex-col items-center justify-center">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            {/* Protected Routes (Placeholders for now) */}
-            <Route path="/student/dashboard" element={<StudentDashboard />} />
-            <Route path="/company/dashboard" element={<CompanyDashboard />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            
-            {/* Catch All */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-        <Footer />
-        <ToastContainer position="top-right" autoClose={3000} />
-      </div>
+      <Routes>
+        {/* Standalone test page — no header/footer */}
+        <Route path="/test/:token" element={
+          <>
+            <TakeTest />
+            <ToastContainer position="top-right" autoClose={3000} />
+          </>
+        } />
+
+        {/* Main app layout */}
+        <Route path="/*" element={
+          <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+            <Header />
+            <main className="flex-grow flex flex-col items-center justify-center">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/student/dashboard" element={<StudentDashboard />} />
+                <Route path="/company/dashboard" element={<CompanyDashboard />} />
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </main>
+            <Footer />
+            <ToastContainer position="top-right" autoClose={3000} />
+          </div>
+        } />
+      </Routes>
     </Router>
   );
 }
 
 export default App;
+

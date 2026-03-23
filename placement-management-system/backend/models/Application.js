@@ -18,6 +18,9 @@ const applicationSchema = mongoose.Schema(
       message: { type: String, required: true },
       date: { type: Date, default: Date.now }
     }],
+    testSent: { type: Boolean, default: false },
+    testToken: { type: String },
+    testCompleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

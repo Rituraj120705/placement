@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
-import { Briefcase, Users, FileText, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Briefcase, Users, FileText, Trash2, ChevronDown, ChevronUp, ClipboardList, BarChart2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import TestBuilder from '../components/TestBuilder';
+import TestResults from '../components/TestResults';
 
 const AdminDashboard = () => {
   const [jobs, setJobs] = useState([]);
@@ -9,6 +11,11 @@ const AdminDashboard = () => {
   const [applications, setApplications] = useState([]);
   const [pendingCompanies, setPendingCompanies] = useState([]);
   const [expandedCompany, setExpandedCompany] = useState(null);
+
+  // Test system state
+  const [testBuilderJob, setTestBuilderJob] = useState(null);
+  const [testResultsJob, setTestResultsJob] = useState(null);
+  const [jobTests, setJobTests] = useState({});
 
   const applicationsCount = applications.length;
   
@@ -24,6 +31,17 @@ const AdminDashboard = () => {
       setApplications(appsRes.data);
       setUsers(usersRes.data);
       setPendingCompanies(pendingRes.data);
+      // Fetch tests for all jobs
+      const testMap = {};
+      await Promise.all(
+        jobsRes.data.map(async (job) => {
+          try {
+            const { data } = await api.get(`/tests/job/${job._id}`);
+            testMap[job._id] = data;
+          } catch (_) {}
+        })
+      );
+      setJobTests(testMap);
     } catch (e) { 
       console.error('Failed to fetch admin stats:', e);
     }
@@ -124,6 +142,22 @@ const AdminDashboard = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 md:p-8 flex-grow">
+      {/* TestBuilder Modal */}
+      {testBuilderJob && (
+        <TestBuilder
+          jobId={testBuilderJob._id}
+          jobTitle={testBuilderJob.title}
+          onClose={() => { setTestBuilderJob(null); fetchData(); }}
+        />
+      )}
+      {/* TestResults Modal */}
+      {testResultsJob && (
+        <TestResults
+          testId={testResultsJob.testId}
+          jobTitle={testResultsJob.jobTitle}
+          onClose={() => setTestResultsJob(null)}
+        />
+      )}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Admin Dashboard</h1>
         <p className="text-slate-600 dark:text-slate-300 mt-1">System Overview and Analytics</p>
@@ -267,12 +301,25 @@ const AdminDashboard = () => {
               <tbody className="divide-y divide-slate-100">
                 {jobs.map(j => (
                   <tr key={j._id} className="hover:bg-slate-50 dark:bg-slate-800/50">
-                    <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">{j.title}</td>
+                    <td className="px-6 py-4 font-medium text-slate-800 dark:text-white">
+                      {j.title}
+                      {jobTests[j._id] && <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full font-bold">Test</span>}
+                    </td>
                     <td className="px-6 py-4">{j.company?.companyName || 'Unknown'}</td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => handleDeleteJob(j._id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex justify-end items-center gap-2">
+                        <button onClick={() => setTestBuilderJob(j)} className="flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-md transition-colors">
+                          <ClipboardList className="w-3 h-3" />{jobTests[j._id] ? 'Edit Test' : 'Create Test'}
+                        </button>
+                        {jobTests[j._id] && (
+                          <button onClick={() => setTestResultsJob({ jobId: j._id, jobTitle: j.title, testId: jobTests[j._id]._id })} className="flex items-center gap-1 px-2 py-1 text-xs font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-md transition-colors">
+                            <BarChart2 className="w-3 h-3" />Results
+                          </button>
+                        )}
+                        <button onClick={() => handleDeleteJob(j._id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

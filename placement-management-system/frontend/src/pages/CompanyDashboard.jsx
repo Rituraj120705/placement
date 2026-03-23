@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { toast } from 'react-toastify';
-import { PlusCircle, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { PlusCircle, Trash2, ToggleLeft, ToggleRight, ClipboardList, BarChart2, Link2 } from 'lucide-react';
+import TestBuilder from '../components/TestBuilder';
+import TestResults from '../components/TestResults';
 
 const CompanyDashboard = () => {
   const [jobs, setJobs] = useState([]);
@@ -22,6 +24,12 @@ const CompanyDashboard = () => {
   // Confirm delete state
   const [confirmDeleteJobId, setConfirmDeleteJobId] = useState(null);
 
+  // Test system state
+  const [testBuilderJob, setTestBuilderJob] = useState(null); // job for TestBuilder modal
+  const [testResultsJob, setTestResultsJob] = useState(null); // {jobId, jobTitle, testId}
+  const [jobTests, setJobTests] = useState({}); // { jobId: { _id, accessToken, ... } }
+  const [sendingTestLink, setSendingTestLink] = useState(null); // appId being processed
+
   useEffect(() => {
     fetchMyJobs();
   }, []);
@@ -30,7 +38,24 @@ const CompanyDashboard = () => {
     try {
       const { data } = await api.get('/jobs/company/me');
       setJobs(data);
+      // Fetch tests for each job
+      fetchJobTests(data);
     } catch (err) { }
+  };
+
+  const fetchJobTests = async (jobList) => {
+    const testMap = {};
+    await Promise.all(
+      jobList.map(async (job) => {
+        try {
+          const { data } = await api.get(`/tests/job/${job._id}`);
+          testMap[job._id] = data;
+        } catch (_) {
+          // No test for this job yet
+        }
+      })
+    );
+    setJobTests(testMap);
   };
 
   const handleCreateJob = async (e) => {
@@ -124,18 +149,61 @@ const CompanyDashboard = () => {
     }
   };
 
+  const handleSendTestLink = async (appId) => {
+    const test = jobTests[selectedJob._id];
+    if (!test) return toast.error('No test created for this job yet. Create a test first.');
+    setSendingTestLink(appId);
+    try {
+      const { data } = await api.post(`/tests/${test._id}/send-link/${appId}`);
+      toast.success('Test link is ready! Copy and share it with the student.');
+      // Copy to clipboard automatically
+      const fullLink = `${window.location.origin}/test/${data.accessToken}`;
+      navigator.clipboard.writeText(fullLink).catch(() => {});
+      // Mark in local state
+      setApplicants(prev => prev.map(a => a._id === appId ? { ...a, testSent: true, testToken: data.accessToken } : a));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send test link');
+    } finally {
+      setSendingTestLink(null);
+    }
+  };
+
+  const handleTestBuilderClose = () => {
+    setTestBuilderJob(null);
+    // Refresh tests
+    fetchMyJobs();
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto p-4 md:p-8 flex-grow">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Company Dashboard</h1>
-          <p className="text-slate-600 dark:text-slate-300 mt-1">Manage your job postings and applicants</p>
+          <p className="text-slate-600 dark:text-slate-300 mt-1">Manage your job postings, applicants, and assessments</p>
         </div>
         <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 py-2.5 px-5">
           <PlusCircle className="w-5 h-5" /> Post New Job
         </button>
       </div>
       
+      {/* TestBuilder Modal */}
+      {testBuilderJob && (
+        <TestBuilder
+          jobId={testBuilderJob._id}
+          jobTitle={testBuilderJob.title}
+          onClose={handleTestBuilderClose}
+        />
+      )}
+
+      {/* TestResults Modal */}
+      {testResultsJob && (
+        <TestResults
+          testId={testResultsJob.testId}
+          jobTitle={testResultsJob.jobTitle}
+          onClose={() => setTestResultsJob(null)}
+        />
+      )}
+
       {/* Create Job Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -232,6 +300,15 @@ const CompanyDashboard = () => {
                             {app.status}
                           </span>
                         </p>
+                        {/* Test status badges */}
+                        <div className="flex gap-2 mt-2">
+                          {app.testSent && (
+                            <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full font-semibold">Test Sent</span>
+                          )}
+                          {app.testCompleted && (
+                            <span className="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full font-semibold">Test Completed</span>
+                          )}
+                        </div>
                         {app.coverLetter && (
                           <p className="text-sm text-slate-700 dark:text-slate-300 mt-2 italic bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700">"{app.coverLetter}"</p>
                         )}
@@ -254,6 +331,15 @@ const CompanyDashboard = () => {
                             <button onClick={() => updateStatus(app._id, 'rejected')} className="px-3 py-1.5 bg-red-50 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors">Reject</button>
                           </div>
                         )}
+                        {/* Send Test Link */}
+                        <button
+                          onClick={() => handleSendTestLink(app._id)}
+                          disabled={sendingTestLink === app._id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-60"
+                        >
+                          <Link2 className="w-3.5 h-3.5" />
+                          {sendingTestLink === app._id ? 'Getting link...' : app.testSent ? 'Copy Test Link Again' : 'Send Test Link'}
+                        </button>
                         <button onClick={() => setIndividualMessage({ appId: individualMessage.appId === app._id ? null : app._id, text: '' })} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-sm font-semibold rounded-lg hover:bg-indigo-100 transition-colors">
                           {individualMessage.appId === app._id ? 'Cancel Message' : 'Message Student'}
                         </button>
@@ -338,6 +424,11 @@ const CompanyDashboard = () => {
                     <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${job.status === 'open' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
                       {job.status === 'open' ? 'Open' : 'Closed'}
                     </span>
+                    {jobTests[job._id] && (
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                        Test Created
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-sm text-slate-500 font-medium">{job.location}</span>
@@ -349,6 +440,24 @@ const CompanyDashboard = () => {
                   <button onClick={() => openApplicantsModal(job)} className="text-primary-600 font-semibold text-sm bg-primary-50 hover:bg-primary-100 py-2 px-4 rounded-lg transition-colors">
                     Manage Applicants
                   </button>
+                  {/* Create / Edit Test */}
+                  <button
+                    onClick={() => setTestBuilderJob(job)}
+                    className="flex items-center gap-1.5 font-semibold text-sm py-2 px-4 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    {jobTests[job._id] ? 'Edit Test' : 'Create Test'}
+                  </button>
+                  {/* View Results (only if test exists) */}
+                  {jobTests[job._id] && (
+                    <button
+                      onClick={() => setTestResultsJob({ jobId: job._id, jobTitle: job.title, testId: jobTests[job._id]._id })}
+                      className="flex items-center gap-1.5 font-semibold text-sm py-2 px-4 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                    >
+                      <BarChart2 className="w-4 h-4" />
+                      View Results
+                    </button>
+                  )}
                   <button
                     onClick={() => handleToggleStatus(job)}
                     title={job.status === 'open' ? 'Close Applications' : 'Reopen Applications'}
